@@ -177,6 +177,10 @@ class SpadeModel(BaseModel):
         for mm in model_:
             mm.zero_grad()
 
+    def zero_grad(self):
+        for mm in [self.appEnc,self.appDnc,self.netG]:
+            mm.zero_grad()
+
     def optimize_parameters(self, epoch):
         self.forward()
         # D
