@@ -22,20 +22,23 @@ class IFGSMAttack(object):
         self.device = device
 
         # PGD or I-FGSM?
-        self.rand = True
+        self.rand = False
     
     def perturb(self, X_nat, y):
         """
         Vanilla Attack.
         """
         origin_img_src = X_nat['img_src'].clone().detach_()#保留原始的img_src
+        origin_img_src = origin_img_src.to(self.device)
 
         if self.rand:
             X_nat['img_src'] = X_nat['img_src'].to(self.device)
-            X_nat['img_src'] += torch.tensor(np.random.uniform(-self.epsilon, self.epsilon, X_nat['img_src'].shape).astype('float32')).to(self.device)
+            x_tmp = X_nat['img_src']+torch.tensor(np.random.uniform(-self.epsilon, self.epsilon, X_nat['img_src'].shape).astype('float32')).to(self.device)
+            # X_nat['img_src'] += torch.tensor(np.random.uniform(-self.epsilon, self.epsilon, X_nat['img_src'].shape).astype('float32')).to(self.device)
             # use the following if FGSM or I-FGSM and random seeds are fixed
             # X = X_nat.clone().detach_() + torch.tensor(np.random.uniform(-0.001, 0.001, X_nat.shape).astype('float32')).cuda()    
-        
+            X_nat['img_src'] = x_tmp.clone().detach_()
+
         X_nat['img_src'].to('cpu')
         
         self.model.set_input(X_nat)#设置model的数据

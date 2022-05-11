@@ -72,11 +72,13 @@ if __name__ == '__main__':
 
         # fusionNet
         for i in range(data['img_src'].shape[0]):
-            img_gen = model.fake_B.cpu().numpy()[i].transpose(1, 2, 0)
+            # img_gen = model.fake_B.cpu().numpy()[i].transpose(1, 2, 0)
+            img_gen = model.fake_B.cpu().detach().numpy()[i].transpose(1, 2, 0)
             
             #攻击：传入data(包含x，即img_src)，和基准Y
             x_adv,perturb = ifgsm_attack.perturb(data,model.fake_B.clone().detach_())#fake_B作为Y
 
+            #——————生成未攻击结果———————
             img_gen = (img_gen * 0.5 + 0.5) * 255.0
             img_gen = img_gen.astype(np.uint8)
             img_gen = dataset.gammaTrans(img_gen, 2.0) # model output image, 256*256*3
@@ -92,7 +94,23 @@ if __name__ == '__main__':
             fuse_eye, mask_eye, img_eye = lightEye(img_ref, lms_ref, fuse_parts, lms_gen, 0.1)
             # res = np.hstack([img_ref, img_pose, img_gen, fuse_eye])
             cv2.imwrite('output/{}.jpg'.format(cnt), fuse_eye)
+
+            #————————攻击后的结果————————
+            adv_img_gen = x_adv.cpu().detach().numpy()[i].transpose(1,2,0)
+
+            adv_img_gen = (adv_img_gen * 0.5 + 0.5) * 255.0
+            adv_img_gen = adv_img_gen.astype(np.uint8)
+            adv_img_gen = dataset.gammaTrans(adv_img_gen, 2.0) # model output image, 256*256*3
+            # cv2.imwrite('output_noFusion/{}.jpg'.format(cnt), img_gen)
+
+            # fusion
+            fuse_parts, seg_ref_parts, seg_gen = fusion(img_ref_parts, lms_ref_parts, adv_img_gen, lms_gen, 0.1)
+            fuse_eye, mask_eye, img_eye = lightEye(img_ref, lms_ref, fuse_parts, lms_gen, 0.1)
+            # res = np.hstack([img_ref, img_pose, img_gen, fuse_eye])
+            cv2.imwrite('adv_output/{}.jpg'.format(cnt), fuse_eye)
+
             cnt += 1
+
     iter_end_time = time.time()
 
     print('length of dataset:', len(dataset))
