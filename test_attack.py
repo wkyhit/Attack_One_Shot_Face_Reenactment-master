@@ -12,6 +12,8 @@ from opt.configTrain import TrainOptions
 from loader.dataset_loader_demo import DatasetLoaderDemo
 from fusion.affineFace import *
 import attacks
+import torch.nn.functional as F
+
 
 
 parser = argparse.ArgumentParser()
@@ -63,6 +65,11 @@ if __name__ == '__main__':
 
     iter_start_time = time.time()
     cnt = 1
+
+    # Initialize Metrics
+    l1_error, l2_error, min_dist, l0_error = 0.0, 0.0, 0.0, 0.0
+    n_dist, n_samples = 0, 0
+
     # with torch.no_grad():
     for step, data in tqdm(enumerate(data_loader)):
         model.set_input(data)  # set device for data
@@ -96,10 +103,11 @@ if __name__ == '__main__':
             cv2.imwrite('output/{}.jpg'.format(cnt), fuse_eye)
 
             #————————攻击后的结果————————
-            data['img_src'] = x_adv.cpu().detach().numpy()
+            # data['img_src'] = x_adv.cpu().detach().numpy()
+            data['img_src'] = x_adv
             model.set_input(data)  # set device for data
             model.forward()
-            
+
             adv_img_gen = model.fake_B.cpu().detach().numpy()[i].transpose(1, 2, 0)
             adv_img_gen = (adv_img_gen * 0.5 + 0.5) * 255.0
             adv_img_gen = adv_img_gen.astype(np.uint8)
@@ -107,14 +115,34 @@ if __name__ == '__main__':
             # cv2.imwrite('output_noFusion/{}.jpg'.format(cnt), img_gen)
 
             # fusion
-            fuse_parts, seg_ref_parts, seg_gen = fusion(img_ref_parts, lms_ref_parts, adv_img_gen, lms_gen, 0.1)
-            fuse_eye, mask_eye, img_eye = lightEye(img_ref, lms_ref, fuse_parts, lms_gen, 0.1)
+            fuse_parts_adv, seg_ref_parts_adv, seg_gen_adv = fusion(img_ref_parts, lms_ref_parts, adv_img_gen, lms_gen, 0.1)
+            fuse_eye_adv, mask_eye_adv, img_eye_adv = lightEye(img_ref, lms_ref, fuse_parts_adv, lms_gen, 0.1)
             # res = np.hstack([img_ref, img_pose, img_gen, fuse_eye])
-            cv2.imwrite('adv_output/{}.jpg'.format(cnt), fuse_eye)
+            cv2.imwrite('adv_output/{}.jpg'.format(cnt), fuse_eye_adv)
 
             cnt += 1
+            # Compare to ground-truth output
+            l1_error += F.l1_loss(fuse_eye_adv, fuse_eye)
+            l2_error += F.mse_loss(fuse_eye_adv, fuse_eye)
+            l0_error += (fuse_eye_adv - fuse_eye).norm(0)
+            min_dist += (fuse_eye_adv - fuse_eye).norm(float('-inf'))
+
+            # Compare to input image
+            # l1_error += F.l1_loss(resulting_image, x_adv)
+            # l2_error += F.mse_loss(resulting_image, x_adv)
+            # l0_error += (resulting_image - x_adv).norm(0)
+            # min_dist += (resulting_image - x_adv).norm(float('-inf'))
+
+            if F.mse_loss(fuse_eye_adv, fuse_eye) > 0.05:
+                n_dist += 1
+            n_samples += 1
+
 
     iter_end_time = time.time()
+    # Print metrics
+    print('{} images. L1 error: {}. L2 error: {}. prop_dist: {}. L0 error: {}. L_-inf error: {}.'.format(n_samples, 
+    l1_error / n_samples, l2_error / n_samples, float(n_dist) / float(n_samples), l0_error / n_samples, min_dist / n_samples))
+
 
     print('length of dataset:', len(dataset))
     print('time per img: ', (iter_end_time - iter_start_time) / len(dataset))
