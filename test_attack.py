@@ -72,6 +72,9 @@ if __name__ == '__main__':
 
     # with torch.no_grad():
     for step, data in tqdm(enumerate(data_loader)):
+        origin_img_src = data['img_src']
+        origin_img_src = origin_img_src.to(device)
+
         model.set_input(data)  # set device for data
         model.forward()
 
@@ -122,19 +125,20 @@ if __name__ == '__main__':
 
             cnt += 1
             # Compare to ground-truth output
-            l1_error += F.l1_loss(fuse_eye_adv, fuse_eye)
-            l2_error += F.mse_loss(fuse_eye_adv, fuse_eye)
-            l0_error += (fuse_eye_adv - fuse_eye).norm(0)
-            min_dist += (fuse_eye_adv - fuse_eye).norm(float('-inf'))
+            # l1_error += F.l1_loss(fuse_eye_adv, fuse_eye)
+            # l2_error += F.mse_loss(fuse_eye_adv, fuse_eye)
+            # l0_error += (fuse_eye_adv - fuse_eye).norm(0)
+            # min_dist += (fuse_eye_adv - fuse_eye).norm(float('-inf'))
 
             # Compare to input image
-            # l1_error += F.l1_loss(resulting_image, x_adv)
-            # l2_error += F.mse_loss(resulting_image, x_adv)
-            # l0_error += (resulting_image - x_adv).norm(0)
-            # min_dist += (resulting_image - x_adv).norm(float('-inf'))
+            l1_error += F.l1_loss(origin_img_src, x_adv)
+            l2_error += F.mse_loss(origin_img_src, x_adv)
+            l0_error += (origin_img_src - x_adv).norm(0)
+            min_dist += (origin_img_src - x_adv).norm(float('-inf'))
 
-            if F.mse_loss(fuse_eye_adv, fuse_eye) > 0.05:
-                n_dist += 1
+            # if F.mse_loss(fuse_eye_adv, fuse_eye) > 0.05:
+            #     n_dist += 1
+
             n_samples += 1
 
 

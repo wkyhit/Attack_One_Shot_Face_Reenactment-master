@@ -49,7 +49,8 @@ class IFGSMAttack(object):
             output = self.model.fake_B
             # output.requires_grad = True
 
-            self.model.func_zero_grad([self.appEnc,self.appDnc,self.netG])
+            # self.model.func_zero_grad([self.appEnc,self.appDnc,self.netG])
+            self.model.zero_grad()
 
             # Attention attack
             # loss = self.loss_fn(output_att, y)
