@@ -63,36 +63,36 @@ if __name__ == '__main__':
 
     iter_start_time = time.time()
     cnt = 1
-    with torch.no_grad():
-        for step, data in tqdm(enumerate(data_loader)):
-            model.set_input(data)  # set device for data
-            model.forward()
+    # with torch.no_grad():
+    for step, data in tqdm(enumerate(data_loader)):
+        model.set_input(data)  # set device for data
+        model.forward()
 
-            ifgsm_attack = attacks.IFGSMAttack(model=model,device=device)
+        ifgsm_attack = attacks.IFGSMAttack(model=model,device=device)
 
-            # fusionNet
-            for i in range(data['img_src'].shape[0]):
-                img_gen = model.fake_B.cpu().numpy()[i].transpose(1, 2, 0)
-                
-                #攻击：传入data(包含x，即img_src)，和基准Y
-                x_adv,perturb = ifgsm_attack.perturb(data,model.fake_B.clone().detach_())#fake_B作为Y
+        # fusionNet
+        for i in range(data['img_src'].shape[0]):
+            img_gen = model.fake_B.cpu().numpy()[i].transpose(1, 2, 0)
+            
+            #攻击：传入data(包含x，即img_src)，和基准Y
+            x_adv,perturb = ifgsm_attack.perturb(data,model.fake_B.clone().detach_())#fake_B作为Y
 
-                img_gen = (img_gen * 0.5 + 0.5) * 255.0
-                img_gen = img_gen.astype(np.uint8)
-                img_gen = dataset.gammaTrans(img_gen, 2.0) # model output image, 256*256*3
-                # cv2.imwrite('output_noFusion/{}.jpg'.format(cnt), img_gen)
+            img_gen = (img_gen * 0.5 + 0.5) * 255.0
+            img_gen = img_gen.astype(np.uint8)
+            img_gen = dataset.gammaTrans(img_gen, 2.0) # model output image, 256*256*3
+            # cv2.imwrite('output_noFusion/{}.jpg'.format(cnt), img_gen)
 
-                lms_gen = data['pt_dst'].cpu().numpy()[i] / 255.0 # [146, 2]
-                img_ref = data['img_src_np'].cpu().numpy()[i]
-                lms_ref = data['pt_src'].cpu().numpy()[i] / 255.0
-                lms_ref_parts, img_ref_parts = affineface_parts(img_ref, lms_ref, lms_gen)
+            lms_gen = data['pt_dst'].cpu().numpy()[i] / 255.0 # [146, 2]
+            img_ref = data['img_src_np'].cpu().numpy()[i]
+            lms_ref = data['pt_src'].cpu().numpy()[i] / 255.0
+            lms_ref_parts, img_ref_parts = affineface_parts(img_ref, lms_ref, lms_gen)
 
-                # fusion
-                fuse_parts, seg_ref_parts, seg_gen = fusion(img_ref_parts, lms_ref_parts, img_gen, lms_gen, 0.1)
-                fuse_eye, mask_eye, img_eye = lightEye(img_ref, lms_ref, fuse_parts, lms_gen, 0.1)
-                # res = np.hstack([img_ref, img_pose, img_gen, fuse_eye])
-                cv2.imwrite('output/{}.jpg'.format(cnt), fuse_eye)
-                cnt += 1
+            # fusion
+            fuse_parts, seg_ref_parts, seg_gen = fusion(img_ref_parts, lms_ref_parts, img_gen, lms_gen, 0.1)
+            fuse_eye, mask_eye, img_eye = lightEye(img_ref, lms_ref, fuse_parts, lms_gen, 0.1)
+            # res = np.hstack([img_ref, img_pose, img_gen, fuse_eye])
+            cv2.imwrite('output/{}.jpg'.format(cnt), fuse_eye)
+            cnt += 1
     iter_end_time = time.time()
 
     print('length of dataset:', len(dataset))
