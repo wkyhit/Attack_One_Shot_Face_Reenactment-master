@@ -96,8 +96,11 @@ if __name__ == '__main__':
             cv2.imwrite('output/{}.jpg'.format(cnt), fuse_eye)
 
             #————————攻击后的结果————————
-            adv_img_gen = x_adv.cpu().detach().numpy()[i].transpose(1,2,0)
-
+            data['img_src'] = x_adv.cpu().detach().numpy()
+            model.set_input(data)  # set device for data
+            model.forward()
+            
+            adv_img_gen = model.fake_B.cpu().detach().numpy()[i].transpose(1, 2, 0)
             adv_img_gen = (adv_img_gen * 0.5 + 0.5) * 255.0
             adv_img_gen = adv_img_gen.astype(np.uint8)
             adv_img_gen = dataset.gammaTrans(adv_img_gen, 2.0) # model output image, 256*256*3
