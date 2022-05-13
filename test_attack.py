@@ -75,18 +75,28 @@ if __name__ == '__main__':
         origin_img_src = data['img_src']
         origin_img_src = origin_img_src.to(device)
 
+        #save original results as Y
         model.set_input(data)  # set device for data
         model.forward()
+        original_output = model.fake_B.cpu().detach() #original reenactment result
 
         ifgsm_attack = attacks.IFGSMAttack(model=model,device=device)
+        #攻击：传入data(包含x，即img_src)，和基准Y
+        x_adv,perturb = ifgsm_attack.perturb(data,model.fake_B.clone().detach_())#fake_B作为Y
+        
+        # use the adversial img_src as input, to generate adversial result
+        data['img_src'] = x_adv
+        model.set_input(data)  # set device for data
+        model.forward()
+        adversial_output = model.fake_B.cpu().detach() #adversial attack result
 
         # fusionNet
         for i in range(data['img_src'].shape[0]):
-            # img_gen = model.fake_B.cpu().numpy()[i].transpose(1, 2, 0)
-            img_gen = model.fake_B.cpu().detach().numpy()[i].transpose(1, 2, 0)
+            # img_gen = model.fake_B.cpu().detach().numpy()[i].transpose(1, 2, 0)
+            img_gen = original_output.numpy()[i].transpose(1, 2, 0)
             
-            #攻击：传入data(包含x，即img_src)，和基准Y
-            x_adv,perturb = ifgsm_attack.perturb(data,model.fake_B.clone().detach_())#fake_B作为Y
+            # #攻击：传入data(包含x，即img_src)，和基准Y
+            # x_adv,perturb = ifgsm_attack.perturb(data,model.fake_B.clone().detach_())#fake_B作为Y
 
             #——————生成未攻击结果———————
             img_gen = (img_gen * 0.5 + 0.5) * 255.0
@@ -107,11 +117,12 @@ if __name__ == '__main__':
 
             #————————攻击后的结果————————
             # data['img_src'] = x_adv.cpu().detach().numpy()
-            data['img_src'] = x_adv
-            model.set_input(data)  # set device for data
-            model.forward()
+            # data['img_src'] = x_adv
+            # model.set_input(data)  # set device for data
+            # model.forward()
 
-            adv_img_gen = model.fake_B.cpu().detach().numpy()[i].transpose(1, 2, 0)
+            # adv_img_gen = model.fake_B.cpu().detach().numpy()[i].transpose(1, 2, 0)
+            adv_img_gen = adversial_output.numpy()[i].transpose(1, 2, 0)
             adv_img_gen = (adv_img_gen * 0.5 + 0.5) * 255.0
             adv_img_gen = adv_img_gen.astype(np.uint8)
             adv_img_gen = dataset.gammaTrans(adv_img_gen, 2.0) # model output image, 256*256*3
@@ -128,8 +139,12 @@ if __name__ == '__main__':
             adv_src_img = np.float32(x_adv[i].cpu().detach()).transpose(1, 2, 0)
             adv_src_img = cv2.normalize(adv_src_img,None,0,255,norm_type=cv2.NORM_MINMAX,dtype=cv2.CV_8UC3)
             cv2.imwrite('adv_src/{}.jpg'.format(cnt), adv_src_img)
-
             
+            #save origin_src_img
+            ori_src_img = np.float32(origin_img_src[i].cpu().detach()).transpose(1, 2, 0)
+            ori_src_img = cv2.normalize(ori_src_img,None,0,255,norm_type=cv2.NORM_MINMAX,dtype=cv2.CV_8UC3)
+            cv2.imwrite('ori_src/{}.jpg'.format(cnt), ori_src_img)
+
             cnt += 1
             # Compare to ground-truth output
             # l1_error += F.l1_loss(fuse_eye_adv, fuse_eye)
