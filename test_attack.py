@@ -123,6 +123,10 @@ if __name__ == '__main__':
             # res = np.hstack([img_ref, img_pose, img_gen, fuse_eye])
             cv2.imwrite('adv_output/{}.jpg'.format(cnt), fuse_eye_adv)
 
+            #save adv_src_img
+            cv2.imwrite('adv_src/{}.jpg'.format(cnt), x_adv)
+
+
             cnt += 1
             # Compare to ground-truth output
             # l1_error += F.l1_loss(fuse_eye_adv, fuse_eye)
