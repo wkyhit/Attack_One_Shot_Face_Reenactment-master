@@ -124,9 +124,12 @@ if __name__ == '__main__':
             cv2.imwrite('adv_output/{}.jpg'.format(cnt), fuse_eye_adv)
 
             #save adv_src_img
-            cv2.imwrite('adv_src/{}.jpg'.format(cnt), x_adv)
+            #!!!x_adv.shape = [6,3,256,256]!!!
+            adv_src_img = np.float32(x_adv[i].cpu().detach()).transpose(1, 2, 0)
+            adv_src_img = cv2.normalize(adv_src_img,None,0,255,norm_type=cv2.NORM_MINMAX,dtype=cv2.CV_8UC3)
+            cv2.imwrite('adv_src/{}.jpg'.format(cnt), adv_src_img)
 
-
+            
             cnt += 1
             # Compare to ground-truth output
             # l1_error += F.l1_loss(fuse_eye_adv, fuse_eye)

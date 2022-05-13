@@ -21,7 +21,7 @@ class IFGSMAttack(object):
         self.loss_fn = nn.MSELoss().to(device)
         self.device = device
 
-        # PGD or I-FGSM?
+        # PGD(True) or I-FGSM(False)?
         self.rand = False
     
     def perturb(self, X_nat, y):
