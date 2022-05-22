@@ -11,7 +11,7 @@ from model.spade_model import SpadeModel
 from opt.configTrain import TrainOptions
 from loader.dataset_loader_demo import DatasetLoaderDemo
 from fusion.affineFace import *
-import attacks
+import nullifying_attacks
 import torch.nn.functional as F
 
 parser = argparse.ArgumentParser()
@@ -78,7 +78,7 @@ if __name__ == '__main__':
         model.forward()
         original_output = model.fake_B.cpu().detach() #original reenactment result
 
-        ifgsm_attack = attacks.IFGSMAttack(model=model,device=device)
+        ifgsm_attack = nullifying_attacks.IFGSMAttack(model=model,device=device)
         #攻击：传入data(包含x，即img_src)，和基准Y
         x_adv,perturb = ifgsm_attack.perturb(data,model.fake_B.clone().detach_())#fake_B作为Y
         
