@@ -98,6 +98,10 @@ class SpadeModel(BaseModel):
 
     def forward(self):
         sample_z, kl_loss, _ = self.appEnc(self.img_src)  # [batch_size,1024,1,1]
+        """
+        add self.sample_z and self.out128
+        """
+        self.sample_z = sample_z
         out16, out32, out64, out128, self.out256 = self.appDnc(sample_z)  # [1024, 16, 16,] [512, 32, 32], [256, 64, 64], [128, 128, 128], [3, 256, 256]
         self.fake_B = self.netG(self.seg_dst, sample_z, [out16, out32, out64, out128]) # [batch_size, 3, 256, 256]
 
