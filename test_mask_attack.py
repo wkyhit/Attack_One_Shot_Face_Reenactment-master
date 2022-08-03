@@ -80,7 +80,7 @@ if __name__ == '__main__':
         ori_sample_z = model.sample_z.cpu().detach() #original sample z 攻击的基准Y
 
         #对比原输出和原输入(shape=[batch_size,3,256,256])，计算mask
-        mask = abs(origin_img_src - original_output)
+        mask = abs(origin_img_src.cpu() - original_output.cpu())
         mask = mask.cpu().detach()
         mask = mask[0,0,:,:]+mask[0,1,:,:]+mask[0,2,:,:] #mask shape=[256,256]
         mask[mask>=0.5] = 1

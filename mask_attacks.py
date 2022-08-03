@@ -20,11 +20,15 @@ class IFGSMAttack(object):
         self.k = k
         self.a = a
         self.loss_fn = nn.MSELoss().to(device)
+        self.loss_fn2 = nn.L1Loss().to(device)
         self.device = device
         self.mask = mask
 
         # PGD(True) or I-FGSM(False)?
         self.rand = True
+
+        #attack on specific channel?
+        self.channel = False
     
     def perturb(self, X_nat, y):
         """
@@ -64,19 +68,32 @@ class IFGSMAttack(object):
             # use mse loss
             # loss = self.loss_fn(output, y)
 
+            # 对某个单通道攻击
+            if self.channel:
+                channel_idx = 0
+                channel_mask = torch.zeros_like(output)
+                channel_mask[:,channel_idx,:,:] = 1
+                channel_mask = channel_mask.to(self.device)
+
             # 只对mask>=0.5部分的像素进行损失计算
             if self.mask is not None:
                 mask = self.mask.clone().detach_()
                 mask = mask.to(self.device)
                 
                 # distort attack
-                # loss = self.loss_fn(output*mask, y*mask)
+                loss = self.loss_fn(output*mask, y*mask) # MSE Loss
+                # loss = self.loss_fn(output[:,0,:,:]*mask, y[:,0,:,:]*mask) #对通道0求loss
+                if self.channel:
+                    loss = self.loss_fn(output*channel_mask*mask, y*channel_mask*mask) #对通道0求loss
                 
+                # loss = self.loss_fn2(output*mask, y*mask) #function: L1
+                # loss = self.loss_fn2(output[:,0,:,:]*mask, y[:,0,:,:]*mask) #function: L1
+
                 #nullfying attack
-                loss = -1*((output*mask-origin_img_src*mask)**2).sum()
+                # loss = -1*((output*mask-origin_img_src*mask)**2).sum()
+
             else:
                 loss = self.loss_fn(output, y)
-            loss = loss.mean()
 
             # loss = ((output - y)**2).sum()
             # loss = loss.mean()
@@ -84,7 +101,10 @@ class IFGSMAttack(object):
             loss.requires_grad_(True) #!!解决无grad bug
             loss.backward()
             # grad = self.model.img_src.grad
+
             grad = self.model.img_src.grad.data
+            # if self.channel:
+            #     grad = self.model.img_src.grad*channel_mask
 
             """
             对grad进行mask---没啥效果
@@ -99,7 +119,10 @@ class IFGSMAttack(object):
             # img_src_adv = self.model.img_src + self.a * grad.sign()
             img_src_adv = self.model.img_src + self.a * torch.sign(grad)
 
-            eta = torch.clamp(img_src_adv - origin_img_src, min=-self.epsilon, max=self.epsilon)#加入的噪声
+            # eta = torch.clamp(img_src_adv - origin_img_src, min=-self.epsilon, max=self.epsilon)#加入的噪声
+            # 对batch 做 mean
+            eta = torch.mean(torch.clamp(img_src_adv - origin_img_src, min=-self.epsilon, max=self.epsilon).detach_(),dim=0)#加入的噪声
+
             X = torch.clamp(origin_img_src + eta, min=-1, max=1).detach_()#攻击后的img_src结果
 
             #重新设置攻击后的img_src给model
